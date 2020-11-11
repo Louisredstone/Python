@@ -1915,11 +1915,11 @@ class CleansedLines(object):
     self.raw_lines = lines
     self.num_lines = len(lines)
     self.lines_without_raw_strings = CleanseRawStrings(lines)
-    for linenum in range(len(self.lines_without_raw_strings)):
-      self.lines.append(CleanseComments(
-          self.lines_without_raw_strings[linenum]))
-      elided = self._CollapseStrings(self.lines_without_raw_strings[linenum])
-      self.elided.append(CleanseComments(elided))
+    for line in CleanseRawStrings(lines):
+      self.lines.append(
+        CleanseComments(line))
+      self.elided.append(
+        CleanseComments(self._CollapseStrings(line)))#1922
 
   def NumLines(self):
     """Returns the number of lines represented."""
@@ -3156,6 +3156,11 @@ class NestingState(object):
       # To avoid template argument cases, we scan forward and look for
       # an unmatched '>'.  If we see one, assume we are inside a
       # template argument list.
+      print(class_decl_match.group(0))#SELF_DEFINE
+      print(class_decl_match.group(1))#SELF_DEFINE
+      print(class_decl_match.group(2))#SELF_DEFINE
+      print(class_decl_match.group(3))#SELF_DEFINE
+      print(class_decl_match.group(4))#SELF_DEFINE
       end_declaration = len(class_decl_match.group(1))
       if not self.InTemplateArgumentList(clean_lines, linenum, end_declaration):
         self.stack.append(_ClassInfo(
@@ -6873,7 +6878,8 @@ def _IsParentOrSame(parent, child):
   return child == os.path.join(prefix, child_suffix)
 
 def main():
-  filenames = ParseArguments(sys.argv[1:])
+  # filenames = ParseArguments(sys.argv[1:])
+  filenames = ['GameScenes.h']#SELFDEFINE
   backup_err = sys.stderr
   try:
     # Change stderr to write with replacement characters so we don't die
