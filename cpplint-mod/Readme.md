@@ -21,8 +21,9 @@
 分析其代码，有关stderr的内容暂且略过，因为这是关于异常情形的，我们目前仅关注正常情形。那么我们不难关注到6876行的ParseArguments()和6885行的ProcessFile()。这两个方法很重要。
 
 ----
+# ParseArguments
 
-再看这两个函数的名字，ParseArguments看上去是分析参数的。而sys.argv又是命令行调用时的参数列表，因而推断这里是负责处理命令行调用方式的代码。
+看函数的名字，ParseArguments看上去是分析参数的。而sys.argv又是命令行调用时的参数列表，因而推断这里是负责处理命令行调用方式的代码。
 
 命令行调用，大概就是在bash/cmd中这样调用：
 ```
@@ -39,6 +40,7 @@ python cpplint.py file1 file2 file3...
 如此分析下来，最重要的便一定是ProcessFile()了。
 
 ----
+# ProcessFile
 
 ![](2020-11-11-13-50-06.png)
 
@@ -57,7 +59,7 @@ python cpplint.py file1 file2 file3...
 6612～6613行的两个空列表定义，分别叫lf_lines和crlf_lines。lf和crlf分别是两种行尾。ASCII码表中有两个不可见字符，即回车(CR, ASCII 13, \r) 换行(LF, ASCII 10, \n)。有的文本文件的一行会以一个LF结尾，而有的文本文件的一行会以一个CR加上一个LF结尾，甚至有的文本文件会混用，这将导致很多麻烦。所以ProcessFile这里应该是对此有一定的处理吧。
 
 6614～6644行是一个try-except语句，大致看了一下，大致意思是：<br>
-如果文件名是'-'，那么就使用stdin（键盘，或者文件流）来输入（文件流是什么就不用管了，是一种不常用的用法，学习自动化的时候才会用到，手动用不到的），否则就读取文件。把信息存放在lines这个列表里。（6622～6629）<br>
+如果文件名是'-'，那么就使用stdin（键盘，或者输入输出流）来输入（输入输出流是什么就不用管了，是一种不常用的用法，学习自动化的时候才会用到，手动用不到的），否则就读取文件。把信息存放在lines这个列表里。（6622～6629）<br>
 然后，再根据行尾是什么，用lf_lines和crlf_lines记录lines里面哪些行是lf结尾，哪些行是crlf结尾。lf_lines和crlf_lines并不存储文本，只存储文本的行号。这是从```lf_lines.append(linenum + 1)```看出来的。（6633～6638）<br>
 一旦出问题就报错退出。（6640～6644）
 
@@ -72,4 +74,8 @@ python cpplint.py file1 file2 file3...
 6668～6674则是在报错，指出不该用crlf作为行尾。
 
 ----
+
+# ProcessFileData
+
+之前分析的发现，其余部分都是在围绕着它做一些后勤工作。聚焦到ProcessFileData。
 
