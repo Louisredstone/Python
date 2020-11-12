@@ -203,3 +203,187 @@ NestingState类有一个成员叫stack，即栈，其中可以放置_ClassInfo,_
 ![](2020-11-11-22-22-15.png)
 
 也就是说，group(0)给出全部的匹配结果，group(1)删掉识别到的最后一个组（正则表达式用括号括起来的匹配组，在3145~3147那几行），group(2)是class或struct，group(3)就是类名，group(4)是父类以及继承方式（或许只是未匹配的字符串部分）。
+
+----
+
+Debug手稿
+
+第6362行
+```
+nesting_state.Update(filename, clean_lines, line, error)
+```
+
+当本行识别到class定义时，nesting_state在update完本行后，stack中会多出来一个ClassInfo，但直到这个class定义结束，都不会有新的block加进来。除非在class定义的内部存在多行block定义。像这种（34~37行）：
+
+![](2020-11-12-09-20-30.png)
+
+----
+
+最后需要得出的内容示例(json)：
+```
+[
+    {
+        "type":"classdef",
+        "name":"GameScene",
+        "parent":"",
+        "member":[
+            {
+                "type":"int",
+                "name":"x"
+            },
+            {
+                "type":"vector<int>",
+                "name":"v"
+            }
+        ],
+        "function":[
+            {
+                "returnType":"void",
+                "name":"foo",
+                "argv":[]
+            },
+            ...
+            {}
+        ]
+    },
+    ...
+    {}
+]
+```
+
+----
+
+最终定稿，可以实现类名的识别，但并不能有效地识别变量名和函数名。
+
+自定义部位：
+- import json
+58行附近
+
+- 新定义了一个类，叫做Extraction
+6938~6966行附近
+```
+class Extraction:
+  def __init__(self):
+    self.json=[]
+    self.current=None#当前正在处理的class名称
+
+  def appendClass(self,name,parent,member=[],function=[]):
+    pass
+
+  def appendMember(self,varType,name):
+    for cl in self.json:
+      if cl["name"]==current:
+        break
+    cl["member"].append({
+      "type":varType,
+      "name":name
+    })
+
+  def appendFunction(self,returnType,name,argv):
+    for cl in self.json:
+      if cl["name"]==current:
+        break
+    cl["function"].append({
+      "returnType":returnType,
+      "name":name,
+      "argv":argv
+    })
+```
+最终计划以json格式输出，因此这里有一个类型为列表的成员变量json。输出格式大致如上文所示。
+其中三个成员函数都还没用到……
+
+- 将Extraction添加到NestingState中，成为其中的成员
+第2923行附近
+![](2020-11-12-12-16-40.png)
+
+- 在NestingState.Update()中添加需要的操作
+在3167~3194行附近
+![](2020-11-12-12-17-52.png)
+核心修改部位。<br>
+先将class_decl_match.group(4)再次进行识别。class_decl_match.group(4)可能是" : public cocos2d::Game2D"这样的情形，也可能是" {"这样的情形。<br>
+分类讨论，如果识别class_decl_match.group(4)得到了父类的名称，那么就直接采用，生成一个parent字典；如果未能识别到父类名称，就到stack里面去找，看当前类定义是不是在某个类的代码块内部进行的，如果找到了，那么这就是父类；如果这样还没有找到，则说明这个类没有父类。<br>
+最终加入到extr中去。
+
+- 在ProcessFileData()中添加需要的操作
+6535~6538行附近
+![](2020-11-12-12-22-04.png)
+以json格式输出识别结果。如果不使用json格式输出，那么python的print是不会自动添加换行符的，这样看上去很不清晰。
+
+- 在main()中指定文件以及vlevel，以便调试。
+- 6915行附近
+![](2020-11-12-12-23-10.png)
+注释掉了原来的一行，并且指定参数为"--verbose=6"，以及文件为"GameScenes.h"。
+
+最终效果：
+```
+extract list:
+[
+    {
+        "type":"classdef",
+        "name":"GameScene",        
+        "parent":{
+            "access":"public",     
+            "name":"cocos2d::Scene"
+        },
+        "member":[],
+        "function":[]
+    },
+    {
+        "type":"classdef",
+        "name":"GameScene4D",      
+        "parent":{
+            "access":"public",
+            "name":"GameScene"
+        },
+        "member":[],
+        "function":[]
+    },
+    {
+        "type":"classdef",
+        "name":"GameScene2D",
+        "parent":null,
+        "member":[],
+        "function":[]
+    },
+    {
+        "type":"classdef",
+        "name":"GameScene3D",
+        "parent":{
+            "access":"public",
+            "name":"GameScene"
+        },
+        "member":[],
+        "function":[]
+    },
+    {
+        "type":"classdef",
+        "name":"CPUGame2D",
+        "parent":{
+            "access":"public",
+            "name":"GameScene2D"
+        },
+        "member":[],
+        "function":[]
+    },
+    {
+        "type":"classdef",
+        "name":"CPUGame3D",
+        "parent":{
+            "access":"public",
+            "name":"GameScene3D"
+        },
+        "member":[],
+        "function":[]
+    },
+    {
+        "type":"classdef",
+        "name":"TwoPlayersGame2D",
+        "parent":{
+            "access":"public",
+            "name":"GameScene2D"
+        },
+        "member":[],
+        "function":[]
+    }
+]
+```

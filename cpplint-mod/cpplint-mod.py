@@ -55,6 +55,7 @@ import sys
 import sysconfig
 import unicodedata
 import xml.etree.ElementTree
+import json#SELFDEFINE
 
 # if empty, use defaults
 _valid_extensions = set([])
@@ -2919,6 +2920,8 @@ class NestingState(object):
     # Stack of _PreprocessorInfo objects.
     self.pp_stack = []
 
+    self.extr=Extraction()#SELFDEFINE
+
   def SeenOpenBrace(self):
     """Check if we have seen the opening brace for the innermost block.
 
@@ -3156,16 +3159,39 @@ class NestingState(object):
       # To avoid template argument cases, we scan forward and look for
       # an unmatched '>'.  If we see one, assume we are inside a
       # template argument list.
-      print(class_decl_match.group(0))#SELF_DEFINE
-      print(class_decl_match.group(1))#SELF_DEFINE
-      print(class_decl_match.group(2))#SELF_DEFINE
-      print(class_decl_match.group(3))#SELF_DEFINE
-      print(class_decl_match.group(4))#SELF_DEFINE
       end_declaration = len(class_decl_match.group(1))
       if not self.InTemplateArgumentList(clean_lines, linenum, end_declaration):
         self.stack.append(_ClassInfo(
             class_decl_match.group(3), class_decl_match.group(2),
             clean_lines, linenum))
+        #SELFDEFINE begin
+        tmp=Match(
+          r'^\s*:\s*(public|private|protected)\s+(\w+::\w+|\w+).*$',
+          class_decl_match.group(4)
+        )
+        if(tmp):
+          parent={
+            "access":tmp.group(1),
+            "name":tmp.group(2)
+          }
+        else:
+          for item in reversed(self.stack[:-1]):
+            if isinstance(item,_ClassInfo):
+              parent={
+                "access":item.access,
+                "name":item.name
+              }
+              break
+          else:
+            parent=None
+        self.extr.json.append({
+          "type":"classdef",
+          "name":class_decl_match.group(3),
+          "parent":parent,
+          "member":[],
+          "function":[]
+        })
+        #SELFDEFINE end
         line = class_decl_match.group(4)
 
     # If we have not yet seen the opening brace for the innermost block,
@@ -3176,6 +3202,9 @@ class NestingState(object):
     # Update access control if we are inside a class/struct
     if self.stack and isinstance(self.stack[-1], _ClassInfo):
       classinfo = self.stack[-1]
+      #SELFDEFINE begin
+
+      #SELFDEFINE end
       access_match = Match(
           r'^(.*)\b(public|private|protected|signals)(\s+(?:slots\s*)?)?'
           r':(?:[^:]|$)',
@@ -6503,6 +6532,11 @@ def ProcessFileData(filename, file_extension, lines, error,
 
   CheckForNewlineAtEOF(filename, lines, error)
 
+  #SELFDEFINE begin
+  print("extract list:")
+  print(json.dumps(nesting_state.extr.json, sort_keys=False, indent=4, separators=(',', ':')))
+  #SELFDEFINE end
+
 def ProcessConfigOverrides(filename):
   """ Loads the configuration files and processes the config overrides.
 
@@ -6879,7 +6913,7 @@ def _IsParentOrSame(parent, child):
 
 def main():
   # filenames = ParseArguments(sys.argv[1:])
-  filenames = ['GameScenes.h']#SELFDEFINE
+  filenames = ParseArguments(["--verbose=6","GameScenes.h"])#SELFDEFINE
   backup_err = sys.stderr
   try:
     # Change stderr to write with replacement characters so we don't die
@@ -6901,6 +6935,35 @@ def main():
 
   sys.exit(_cpplint_state.error_count > 0)
 
+#SELFDEFINE begin
+class Extraction:
+  def __init__(self):
+    self.json=[]
+    self.current=None#当前正在处理的class名称
+
+  def appendClass(self,name,parent,member=[],function=[]):
+    pass
+
+  def appendMember(self,varType,name):
+    for cl in self.json:
+      if cl["name"]==current:
+        break
+    cl["member"].append({
+      "type":varType,
+      "name":name
+    })
+
+  def appendFunction(self,returnType,name,argv):
+    for cl in self.json:
+      if cl["name"]==current:
+        break
+    cl["function"].append({
+      "returnType":returnType,
+      "name":name,
+      "argv":argv
+    })
+
+#SELFDEFINE end
 
 if __name__ == '__main__':
   main()

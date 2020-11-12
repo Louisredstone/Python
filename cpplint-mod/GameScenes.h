@@ -31,13 +31,16 @@ public:
 	virtual bool init();
 
 	void initMainMenu();
-	virtual void initTestButtons() {};//test
+	virtual void initTestButtons() {
+
+
+	};//test
 	virtual void initGameInfo() {};
 	virtual void initGameRange() {};
 	virtual void refreshGameRange() {};
 	virtual void initPlayingPlayerInfo();
 	virtual void refreshPlayingPlayerInfo() {};
-	virtual void initButtons() {};//»ÚÆå¡¢Í¶½µµÈ
+	virtual void initButtons() {};//ï¿½ï¿½ï¿½å¡¢Í¶ï¿½ï¿½ï¿½ï¿½
 	virtual void initGameAI() {};
 	virtual void initListener() {};
 	virtual void initGameOverInfo() {};
@@ -51,9 +54,22 @@ public:
 
 	// implement the "static create()" method manually
 	CREATE_FUNC(GameScene);
+
+	class GameScene4D
+	{
+	public:
+		virtual void initGameInfo(){}
+		//void initGameRange();
+		//void refreshGameRange();
+		//virtual void initButtons();
+		virtual void initGameAI() {};
+		virtual string player_white() { return string(""); }
+		virtual string player_black() { return string(""); }
+		CREATE_FUNC(GameScene3D);
+	};
 };
 
-class GameScene2D :public GameScene
+class GameScene2D :GameScene
 {
 public:
 	Chess2D chess;
@@ -104,8 +120,10 @@ class CPUGame2D :public GameScene2D
 public:
 
 	virtual void initGameInfo(){}
-	virtual string player_white()override { if (p1_is_white)return string("Player"); else return string("Computer"); }
-	virtual string player_black()override { if (p1_is_white)return string("Computer"); else return string("Player"); }
+	virtual string player_white()override { if (p1_is_white)return string("Player"); 
+	else return string("Computer"); }
+	virtual string player_black()override { if (p1_is_white)return string("Computer"); 
+	else return string("Player"); }
 	virtual void initButtons();
 	virtual void initGameAI() {};
 	CREATE_FUNC(CPUGame2D);
